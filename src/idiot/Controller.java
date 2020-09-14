@@ -1,29 +1,96 @@
 package idiot;
 
 import javafx.application.Platform;
+import javafx.event.EventHandler;
+import javafx.scene.Scene;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.awt.*;
+import java.util.Random;
 
 public class Controller {
 
-    public Pane mainPane;
-    private static Stage mainStage;
-    private String blackBgStyle="-fx-background-image: url('idiot/img/idiot-black.png')";
-    private String whiteBgStyle="-fx-background-image: url('idiot/img/idiot-white.png')";
+    private String blackBgStyle="-fx-background-image: url('idiot/img/idiot-black.png'); -fx-background-size: "+SCENE_WIDTH+" "+ SCENE_HEIGHT+";";
+    //private String blackBgStyle="-fx-background-image: url('idiot/img/idiot-black.png'); -fx-background-size: cover;";
+    private String whiteBgStyle="-fx-background-image: url('idiot/img/idiot-white.png'); -fx-background-size: cover;";
+
+    final static double SCENE_WIDTH=300, SCENE_HEIGHT=230; //pixels
+    private final int MAX_MOVE_VALUE = 20; //pixels
+    private final int BGCHANGER_SLEEP_DURATION = 800; //millis
+    private final int MOVER_SLEEP_DURATION = 50; //millis
+
+    private double rightXborder, lowYborder, screenWidth, screenHeight;
+    private static Stage parentStage;
 
     public void initialize() {
-        new Thread(new BackgroundChanger()).start();
-        new Thread(new StageMover()).start();
+
+        createParentStage();
+        //for (int i=0;i<15;i++)
+        createNewWindow();
+
+    }
+
+    //creates invisible parent stage
+    private void createParentStage()
+    {
+        parentStage = new Stage();
+        parentStage.setScene(new Scene(new Pane(), 1, 1));
+        parentStage.initStyle(StageStyle.UTILITY);
+        parentStage.setOpacity(0);
+        parentStage.show();
+    }
+
+    //create new window and start needed threads
+    private void createNewWindow()
+    {
+        Stage stage = new Stage();
+        Pane pane = new Pane();
+        pane.setStyle(blackBgStyle);
+
+        stage.initOwner(parentStage);
+        stage.initStyle(StageStyle.DECORATED);
+        stage.setScene(new Scene(pane,SCENE_WIDTH,SCENE_HEIGHT));
+        //stage.setResizable(false);
+        stage.setAlwaysOnTop(true);
+        stage.show();
+
+
+        //start background-changing thread for new window
+        new Thread(new BackgroundChanger(pane)).start();
+        //start stage-moving thread for new window
+        new Thread(new StageMover(stage)).start();
+
+
+        //prevent window from being closed
+        stage.setOnCloseRequest(event -> {
+            event.consume();
+
+            //and also start a new one :-)
+            createNewWindow();
+        });
+
+        //start new window if clicked :-)
+        pane.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                createNewWindow();
+            }
+        });
 
     }
 
 
-
-
     class BackgroundChanger implements Runnable
     {
+        BackgroundChanger(Pane pane)
+        {
+            this.pane=pane;
+        }
+
+        private final Pane pane;
         boolean bgIsBlack=true;
 
         public void run()
@@ -31,18 +98,18 @@ public class Controller {
             for(;;)
             {
                 try {
-                    Thread.sleep(200);
+                    Thread.sleep(BGCHANGER_SLEEP_DURATION);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
 
                 if(bgIsBlack)
                 {
-                    mainPane.setStyle(whiteBgStyle);
+                    pane.setStyle(whiteBgStyle);
                 }
                 else
                 {
-                    mainPane.setStyle(blackBgStyle);
+                    pane.setStyle(blackBgStyle);
                 }
                 bgIsBlack^=true;
             }
@@ -51,71 +118,75 @@ public class Controller {
 
     class StageMover implements Runnable
     {
-        private double rightXborder, lowYborder, screenWidth, screenHeight;
-        private final int MOVE_VALUE = 20;
-        private boolean moveXright=true,moveYdown=true;
+        StageMover(Stage stage)
+        {
+            this.stage = stage;
+        }
+
+        private boolean movingRight =true, movingDown =true;
+        private Stage stage;
+        private int xMoveValue,yMoveValue;
+
 
         public void run() {
-            mainStage = new Main().getMainStage();
             screenWidth = Toolkit.getDefaultToolkit().getScreenSize().getWidth();
             screenHeight = Toolkit.getDefaultToolkit().getScreenSize().getHeight();
+            xMoveValue = new Random().nextInt(MAX_MOVE_VALUE-5)+5;
+            yMoveValue = new Random().nextInt(MAX_MOVE_VALUE-5)+5;
 
 
             for (;;)
             {
-
                 try {
-                    Thread.sleep(30);
+                    Thread.sleep(MOVER_SLEEP_DURATION);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
 
                 Platform.runLater(() ->
                 {
-                    calculate();
-                    if(moveXright)
+                    checkAvailableMoves();
+                    if(movingRight)
                     {
-                        mainStage.setX(mainStage.getX() + MOVE_VALUE);
+                        stage.setX(stage.getX() + xMoveValue);
                     }
                     else
                     {
-                        mainStage.setX(mainStage.getX() - MOVE_VALUE);
+                        stage.setX(stage.getX() - xMoveValue);
                     }
 
-                    if(moveYdown)
+                    if(movingDown)
                     {
-                        mainStage.setY(mainStage.getY() + MOVE_VALUE);
+                        stage.setY(stage.getY() + yMoveValue);
                     }
                     else
                     {
-                        mainStage.setY(mainStage.getY() - MOVE_VALUE);
+                        stage.setY(stage.getY() - yMoveValue);
                     }
 
                 });
-
-
             }
         }
 
-        void calculate()
+        void checkAvailableMoves()
         {
-            rightXborder=mainStage.getX()+mainStage.getWidth();
+            rightXborder=stage.getX()+stage.getWidth();
             if(rightXborder>screenWidth)
             {
-                moveXright=false;
+                movingRight =false;
             }
-            if(mainStage.getX()<0)
+            if(stage.getX()<0)
             {
-                moveXright=true;
+                movingRight =true;
             }
-            lowYborder=mainStage.getY()+mainStage.getHeight();
+            lowYborder=stage.getY()+stage.getHeight();
             if(lowYborder>screenHeight)
             {
-                moveYdown=false;
+                movingDown =false;
             }
-            if(mainStage.getY()<0)
+            if(stage.getY()<0)
             {
-                moveYdown=true;
+                movingDown =true;
             }
         }
 

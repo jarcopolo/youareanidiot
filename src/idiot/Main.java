@@ -4,27 +4,21 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 public class Main extends Application {
 
-    private static Stage mainStage;
-    final static double SCENE_WIDTH=800, SCENE_HEIGHT=600;
-
     @Override
-    public void start(Stage primaryStage) throws Exception{
+    public void start(Stage parentStage) throws Exception{
         Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
-        mainStage = primaryStage;
-        primaryStage.setTitle("You are an idiot!");
-        primaryStage.setScene(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT));
-        primaryStage.show();
+        parentStage.setScene(new Scene(new Pane(), 1, 1));
+        parentStage.initStyle(StageStyle.UTILITY);
+        //parentStage.setOpacity(0);
+        //parentStage.show();
         //new Controller().startFun();
 
-    }
-
-    Stage getMainStage()
-    {
-        return mainStage;
     }
 
     public static void main(String[] args) {
